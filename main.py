@@ -24,110 +24,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------------- Custom CSS for Better Graphics ----------------
-st.markdown("""
-<style>
-    .main-header {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-        text-align: center;
-        color: white;
-    }
-    
-    .course-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 5px solid #667eea;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .study-task {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 3px solid #4CAF50;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        color: #333;
-    }
-    
-    .study-task strong {
-        color: #2c3e50;
-    }
-    
-    .detailed-schedule {
-        background: #ffffff;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .detailed-schedule h3 {
-        color: #2c3e50;
-        margin-bottom: 1rem;
-    }
-    
-    .exam-date {
-        background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: bold;
-        display: inline-block;
-        margin: 0.5rem 0;
-    }
-    
-    .metric-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .stButton > button {
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 25px;
-        font-weight: bold;
-        transition: all 0.3s;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    
-    .conflict-warning {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        color: #856404;
-    }
-    
-    .success-message {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        color: #155724;
-    }
-</style>
-""", unsafe_allow_html=True)
+# ---------------- UI & Styling ----------------
+def load_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+def apply_theme(dark_mode):
+    if dark_mode:
+        st.markdown('<body class="dark-mode">', unsafe_allow_html=True)
+    else:
+        st.markdown('<body class="light-mode">', unsafe_allow_html=True)
 
 # ---------------- PDF Text Extraction ----------------
 def extract_text_from_pdf(pdf_file):
@@ -163,24 +69,25 @@ Syllabus Content: {syllabus_text[:2500]}
 
 {other_courses_context}
 
-Create a detailed {available_days}-day study plan with the following format:
-Day 1: [Specific topics and tasks with time estimates]
-Day 2: [Specific topics and tasks with time estimates]
+Create a detailed {available_days}-day study plan. For each day, provide a list of tasks and their estimated duration.
+
+**FORMAT:**
+Day 1:
+- Task 1 (e.g., "Review Chapter 1") - 1.5 hours
+- Task 2 (e.g., "Practice problems for Chapter 1") - 2 hours
+
+Day 2:
+- Task 1 (e.g., "Read Chapter 2") - 1 hour
 ...
-Day {available_days}: [Final review and exam preparation]
 
-IMPORTANT GUIDELINES:
-- Create exactly {available_days} days of study content
-- Make each day's tasks specific and actionable
-- Include estimated time for each task (e.g., "2 hours", "45 minutes")
-- Consider workload balance across all courses
-- Include variety in study methods (reading, practice, review)
-- Build in breaks and rest periods
-- Make the final day focused on review and confidence building
-- Do NOT schedule any study on the actual exam date
-- Prioritize the most important topics first
-
-Format each day exactly as "Day X: [content]" for proper parsing.
+**IMPORTANT GUIDELINES:**
+- Create exactly {available_days} days of study content.
+- Provide a time estimate in hours for each task (e.g., "1.5 hours", "45 minutes").
+- Ensure the total study time for any single day does not exceed 4 hours.
+- Be specific and actionable in your task descriptions.
+- Prioritize the most important topics based on the syllabus.
+- Do NOT schedule any study on the actual exam date.
+- Format each day exactly as "Day X:" followed by a list of tasks.
 """
 
     try:
@@ -196,105 +103,131 @@ Format each day exactly as "Day X: [content]" for proper parsing.
         return f"❌ Error generating study plan for {course_name}: {e}"
 
 # ---------------- Calendar Logic with Conflict Resolution ----------------
+def _parse_time_string(time_str):
+    """Parse time string like '1.5 hours' or '45 minutes' into hours (float)"""
+    time_str = time_str.lower()
+    total_hours = 0
+
+    # Find hours
+    hour_match = re.search(r'(\d+\.?\d*)\s*hours?', time_str)
+    if hour_match:
+        total_hours += float(hour_match.group(1))
+
+    # Find minutes
+    min_match = re.search(r'(\d+)\s*minutes?', time_str)
+    if min_match:
+        total_hours += float(min_match.group(1)) / 60
+
+    return total_hours
+
 def parse_study_plan_to_calendar_items(plan_text, course_name, exam_date, available_days):
     """Parse study plan text into structured calendar items"""
     items = []
     
-    # Better regex to match day patterns
+    # Regex to match each day's content
     day_pattern = r'Day\s*(\d+):\s*(.*?)(?=Day\s*\d+:|$)'
-    matches = re.findall(day_pattern, plan_text, re.DOTALL | re.IGNORECASE)
+    day_matches = re.findall(day_pattern, plan_text, re.DOTALL | re.IGNORECASE)
     
-    for day_num, task_text in matches:
+    for day_num, day_content in day_matches:
         day_number = int(day_num)
-        if day_number <= available_days:
-            # Calculate study date: exam_date - (available_days - day_number + 1) days
-            study_date = exam_date - timedelta(days=(available_days - day_number + 1))
+        if day_number > available_days:
+            continue
             
-            # Clean up task text
-            task_text = task_text.strip().replace('\n', ' ').replace('  ', ' ')
+        study_date = exam_date - timedelta(days=(available_days - day_number + 1))
+
+        # Regex to match tasks within a day's content
+        task_pattern = r'-\s*(.*?)\s*-\s*([\d\.]+\s*(?:hours?|minutes?))'
+        task_matches = re.findall(task_pattern, day_content, re.IGNORECASE)
+
+        for task_desc, time_str in task_matches:
+            duration = _parse_time_string(time_str)
+            if duration == 0:
+                # Default duration if parsing fails
+                duration = 1.0
             
             items.append({
                 "date": study_date,
                 "course": course_name,
-                "task": task_text,
+                "task": task_desc.strip(),
+                "duration": duration,  # in hours
                 "day": f"Day {day_number}",
                 "days_until_exam": (exam_date - study_date).days,
                 "exam_date": exam_date
             })
-    
+
     return items
 
-def resolve_calendar_conflicts(all_calendar_items):
-    """Resolve conflicts in calendar items to prevent overlapping studies"""
+def resolve_calendar_conflicts(all_calendar_items, max_daily_hours=4.0):
+    """Resolve conflicts by ensuring daily study load does not exceed a max limit."""
     if not all_calendar_items:
         return all_calendar_items, []
-    
-    # Sort by date
-    sorted_items = sorted(all_calendar_items, key=lambda x: x['date'])
-    
-    # Group by date
+
+    # Group items by date
     date_groups = {}
-    for item in sorted_items:
+    for item in all_calendar_items:
         date_str = item['date'].strftime('%Y-%m-%d')
         if date_str not in date_groups:
             date_groups[date_str] = []
         date_groups[date_str].append(item)
-    
+
     resolved_items = []
     conflicts_resolved = []
     
-    for date_str, items in date_groups.items():
-        if len(items) == 1:
-            # No conflict
-            resolved_items.append(items[0])
-        else:
-            # Conflict detected - distribute across available days
-            conflicts_resolved.append({
-                'date': date_str,
-                'courses': [item['course'] for item in items],
-                'original_count': len(items)
-            })
-            
-            # Strategy: Keep the item with the closest exam date on the original day
-            # Move others to nearby days
-            items_by_urgency = sorted(items, key=lambda x: x['days_until_exam'])
-            
-            # Keep the most urgent item on the original day
-            resolved_items.append(items_by_urgency[0])
-            
-            # Redistribute others
-            for i, item in enumerate(items_by_urgency[1:], 1):
-                # Try to move to a nearby day (prefer earlier days)
-                for day_offset in [1, -1, 2, -2, 3, -3]:
-                    new_date = item['date'] + timedelta(days=day_offset)
-                    
-                    # Check if new date is available and not an exam day
-                    new_date_str = new_date.strftime('%Y-%m-%d')
-                    date_available = True
-                    
-                    # Check if it's an exam day for any course
-                    for existing_item in all_calendar_items:
-                        if existing_item['exam_date'] == new_date:
-                            date_available = False
+    # Sort dates to process chronologically
+    sorted_dates = sorted(date_groups.keys())
+
+    for date_str in sorted_dates:
+        items_on_day = sorted(date_groups[date_str], key=lambda x: x['days_until_exam'])
+        daily_hours = 0
+
+        for item in items_on_day:
+            if daily_hours + item['duration'] <= max_daily_hours:
+                # No conflict, add to resolved items
+                resolved_items.append(item)
+                daily_hours += item['duration']
+            else:
+                # Conflict: try to reschedule
+                conflicts_resolved.append({
+                    'date': date_str,
+                    'courses': [item['course']],
+                    'original_count': 1 # Simplified for new logic
+                })
+
+                rescheduled = False
+                for day_offset in range(1, 8): # Try to move up to a week
+                    # Try earlier days first
+                    for sign in [-1, 1]:
+                        new_date = item['date'] + timedelta(days=day_offset * sign)
+
+                        # Don't reschedule to a date after the exam
+                        if new_date >= item['exam_date']:
+                            continue
+
+                        new_date_str = new_date.strftime('%Y-%m-%d')
+
+                        # Calculate hours on the potential new day
+                        new_day_hours = sum(i['duration'] for i in resolved_items if i['date'] == new_date)
+
+                        if new_day_hours + item['duration'] <= max_daily_hours:
+                            modified_item = item.copy()
+                            modified_item['date'] = new_date
+                            modified_item['task'] = f"[Rescheduled] {item['task']}"
+                            resolved_items.append(modified_item)
+                            rescheduled = True
                             break
-                    
-                    # Check if the new date already has fewer than 2 items
-                    if date_available and len([x for x in resolved_items if x['date'] == new_date]) < 2:
-                        modified_item = item.copy()
-                        modified_item['date'] = new_date
-                        modified_item['task'] = f"[Rescheduled] {item['task']}"
-                        resolved_items.append(modified_item)
+                    if rescheduled:
                         break
-                else:
-                    # If no suitable day found, keep original but mark as conflicted
+
+                if not rescheduled:
+                    # Could not reschedule, mark as conflict
                     conflicted_item = item.copy()
-                    conflicted_item['task'] = f"[CONFLICT] {item['task']}"
+                    conflicted_item['task'] = f"[CONFLICT - Overloaded] {item['task']}"
                     resolved_items.append(conflicted_item)
-    
-    return resolved_items, conflicts_resolved
+
+    return sorted(resolved_items, key=lambda x: x['date']), conflicts_resolved
 
 # ---------------- Enhanced Calendar Visualization ----------------
-def create_calendar_visualization(calendar_items):
+def create_calendar_visualization(calendar_items, dark_mode=False):
     """Create an enhanced calendar visualization using Plotly"""
     if not calendar_items:
         return None
@@ -308,14 +241,13 @@ def create_calendar_visualization(calendar_items):
     
     # Get unique courses and assign colors
     courses = df['course'].unique()
-    colors = px.colors.qualitative.Set3[:len(courses)]
-    color_map = dict(zip(courses, colors))
+    colors = px.colors.qualitative.Pastel if not dark_mode else px.colors.qualitative.Vivid
+    color_map = dict(zip(courses, colors[:len(courses)]))
     
     # Add timeline traces for each course
     for course in courses:
         course_data = df[df['course'] == course].sort_values('date')
         
-        # Create timeline for this course
         fig.add_trace(go.Scatter(
             x=course_data['date'],
             y=[course] * len(course_data),
@@ -324,13 +256,13 @@ def create_calendar_visualization(calendar_items):
             marker=dict(
                 color=color_map[course],
                 size=15,
-                line=dict(width=2, color='white')
+                line=dict(width=2, color='white' if not dark_mode else '#1E1E1E')
             ),
             line=dict(color=color_map[course], width=3),
-            text=[f"{row['day']}: {row['task'][:50]}..." for _, row in course_data.iterrows()],
+            text=[f"<b>{row['day']}</b>: {row['task']}<br><em>{row['duration']:.2f} hours</em>" for _, row in course_data.iterrows()],
             hovertemplate="<b>%{y}</b><br>" +
-                         "Date: %{x}<br>" +
-                         "Task: %{text}<br>" +
+                         "Date: %{x|%A, %b %d}<br>" +
+                         "Info: %{text}<br>" +
                          "<extra></extra>"
         ))
         
@@ -342,14 +274,14 @@ def create_calendar_visualization(calendar_items):
             mode='markers',
             name=f'{course} Exam',
             marker=dict(
-                color='red',
+                color='#FF4136' if not dark_mode else '#FF6B6B',
                 size=20,
                 symbol='star',
-                line=dict(width=2, color='white')
+                line=dict(width=2, color='white' if not dark_mode else '#1E1E1E')
             ),
-            text=f"EXAM: {course}",
-            hovertemplate="<b>%{y} EXAM</b><br>" +
-                         "Date: %{x}<br>" +
+            text=f"<b>EXAM: {course}</b>",
+            hovertemplate="<b>%{text}</b><br>" +
+                         "Date: %{x|%A, %b %d}<br>" +
                          "<extra></extra>",
             showlegend=False
         ))
@@ -357,57 +289,62 @@ def create_calendar_visualization(calendar_items):
     fig.update_layout(
         title="📅 Study Schedule Timeline",
         xaxis_title="Date",
-        yaxis_title="Course",
-        height=max(400, len(courses) * 100),
+        yaxis_title="",
+        height=max(400, len(courses) * 80),
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=12),
+        font=dict(
+            size=12,
+            color= '#1E1E1E' if not dark_mode else '#EAEAEA'
+        ),
         title_font_size=20,
         xaxis=dict(
             type='date',
             tickformat='%b %d',
             showgrid=True,
-            gridcolor='lightgray'
+            gridcolor= '#E5E7EB' if not dark_mode else '#374151',
+            gridwidth=1
         ),
         yaxis=dict(
-            showgrid=True,
-            gridcolor='lightgray'
+            showgrid=False,
         ),
-        hovermode='closest'
+        hovermode='closest',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     
     return fig
 
-def show_calendar_view(calendar_items, conflicts_resolved):
+def show_calendar_view(calendar_items, conflicts_resolved, dark_mode=False):
     """Display enhanced calendar view with better graphics"""
     if not calendar_items:
         st.warning("📅 No calendar items to display.")
         return
-    
+
     # Show conflict resolution summary
     if conflicts_resolved:
         st.markdown('<div class="conflict-warning">', unsafe_allow_html=True)
-        st.markdown("⚠️ **Schedule Conflicts Detected and Resolved:**")
+        st.markdown("⚠️ **Schedule Overload Detected:**")
+        st.markdown("Some study sessions were rescheduled or marked as conflicted to avoid overloading your schedule.")
         for conflict in conflicts_resolved:
             courses_str = ", ".join(conflict['courses'])
-            st.markdown(f"• {conflict['date']}: {courses_str} ({conflict['original_count']} courses)")
-        st.markdown("Some study sessions have been automatically rescheduled to avoid conflicts.")
+            st.markdown(f"• **{conflict['date']}**: Overload with course(s) **{courses_str}**.")
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="success-message">', unsafe_allow_html=True)
         st.markdown("✅ **No Schedule Conflicts Detected** - Your study plan is optimally organized!")
         st.markdown('</div>', unsafe_allow_html=True)
-    
+
     df = pd.DataFrame(calendar_items)
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date')
-    
+
     # Create timeline visualization
-    fig = create_calendar_visualization(calendar_items)
+    fig = create_calendar_visualization(calendar_items, dark_mode)
     if fig:
         st.plotly_chart(fig, use_container_width=True)
-    
+
     # Create metrics dashboard
+    st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -460,7 +397,11 @@ def show_calendar_view(calendar_items, conflicts_resolved):
             
             st.markdown(f'''
             <div class="{task_class}">
-                <strong>{row['day']} ({row['date'].strftime('%A, %B %d')})</strong><br>
+                <strong>{row['day']} ({row['date'].strftime('%A, %B %d')})</strong>
+                <span style="float: right; background-color: #eee; padding: 2px 8px; border-radius: 12px; font-size: 0.8em;">
+                    🕒 {row['duration']:.2f} hours
+                </span>
+                <br>
                 {row['task']}
             </div>
             ''', unsafe_allow_html=True)
@@ -471,17 +412,20 @@ def show_calendar_view(calendar_items, conflicts_resolved):
 
 # ---------------- Main Streamlit App ----------------
 def main():
-    # Header
-    st.markdown('''
-    <div class="main-header">
-        <h1>📚 StudyPlanner AI</h1>
-        <p>Plan your test season across multiple subjects with AI-powered study schedules</p>
-    </div>
-    ''', unsafe_allow_html=True)
+    # --- Initial Setup ---
+    if 'dark_mode' not in st.session_state:
+        st.session_state.dark_mode = False
     
-    # Sidebar
+    load_css("styles.css")
+    apply_theme(st.session_state.dark_mode)
+
+    # --- Sidebar ---
     with st.sidebar:
         st.markdown("### 🔧 Settings")
+
+        # Dark Mode Toggle
+        st.session_state.dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
+
         st.markdown("**API Configuration**")
         groq_key = st.text_input("Groq API Key", type="password", 
                                 placeholder="Enter your Groq API key here")
@@ -495,7 +439,7 @@ def main():
         
         st.markdown("---")
         st.markdown("### 📖 Instructions")
-        st.markdown("""
+        st.info("""
         1. Upload your syllabus PDFs
         2. Set exam dates for each course
         3. Generate AI-powered study plans
@@ -505,17 +449,22 @@ def main():
         
         st.markdown("---")
         st.markdown("### ℹ️ About")
-        st.markdown("""
-        This app uses **Groq AI** to create personalized study schedules based on your course syllabi.
-        
-        **New Features:**
+        st.success("""
+        This app uses **Groq AI** to create personalized study schedules.
         - ✅ Automatic conflict resolution
-        - ✅ No study on exam days
         - ✅ Adaptive plan length
         - ✅ Enhanced timeline visualization
         """)
+
+    # --- Main Header ---
+    st.markdown('''
+    <div class="main-header">
+        <h1>📚 StudyPlanner AI</h1>
+        <p>Plan your test season across multiple subjects with AI-powered schedules</p>
+    </div>
+    ''', unsafe_allow_html=True)
     
-    # File upload
+    # --- File Uploader ---
     uploaded_files = st.file_uploader(
         "📁 Upload Syllabus PDFs", 
         type=["pdf"], 
@@ -523,36 +472,30 @@ def main():
         help="Upload PDF files containing your course syllabi"
     )
     
+    # --- Session State Initialization ---
     if "exam_dates" not in st.session_state:
         st.session_state.exam_dates = {}
-    
     if "generated_plans" not in st.session_state:
         st.session_state.generated_plans = {}
-    
     if "calendar_items" not in st.session_state:
         st.session_state.calendar_items = []
-    
     if "conflicts_resolved" not in st.session_state:
         st.session_state.conflicts_resolved = []
     
+    # --- Main Logic ---
     if uploaded_files:
         st.markdown("### 📅 Set Exam Dates")
         
-        # Create a nice layout for exam dates
+        # Layout for exam dates
         for i, file in enumerate(uploaded_files):
-            col1, col2 = st.columns([2, 1])
-            
+            col1, col2 = st.columns([3, 2])
             with col1:
                 st.markdown(f"**📚 {file.name}**")
-            
             with col2:
-                selected_date = st.date_input(
-                    f"Exam date",
-                    key=f"exam_date_{i}",
-                    min_value=datetime.now().date(),
+                st.session_state.exam_dates[file.name] = st.date_input(
+                    f"Exam date", key=f"exam_date_{i}", min_value=datetime.now().date(),
                     help=f"Select exam date for {file.name}"
                 )
-                st.session_state.exam_dates[file.name] = selected_date
         
         st.markdown("---")
         
@@ -566,18 +509,11 @@ def main():
             st.session_state.calendar_items = []
             st.session_state.conflicts_resolved = []
             
-            # Prepare all courses info for better planning
-            all_courses_info = []
-            for file in uploaded_files:
-                exam_date = st.session_state.exam_dates.get(file.name)
-                if exam_date:
-                    all_courses_info.append({
-                        'name': file.name.replace('.pdf', ''),
-                        'exam_date': exam_date.strftime("%B %d, %Y"),
-                        'file': file
-                    })
+            all_courses_info = [{'name': f.name.replace('.pdf', ''),
+                                 'exam_date': st.session_state.exam_dates.get(f.name).strftime("%B %d, %Y"),
+                                 'file': f} for f in uploaded_files if st.session_state.exam_dates.get(f.name)]
             
-            progress_bar = st.progress(0)
+            progress_bar = st.progress(0, text="🚀 Generating plans...")
             all_calendar_items = []
             
             for i, file in enumerate(uploaded_files):
@@ -586,23 +522,20 @@ def main():
                     st.warning(f"⚠️ Please select a date for {file.name}")
                     continue
                 
-                progress_bar.progress((i + 1) / len(uploaded_files))
+                progress_bar.progress((i + 1) / len(uploaded_files), text=f"Analyzing {file.name}...")
                 
-                with st.spinner(f"🤖 Generating study plan for {file.name}..."):
+                with st.spinner(f"🤖 Generating plan for {file.name}..."):
                     syllabus_text = extract_text_from_pdf(file)
                     if not syllabus_text:
                         st.error(f"❌ Could not extract text from {file.name}")
                         continue
                     
                     course_name = file.name.replace('.pdf', '')
-                    formatted_date = exam_date.strftime("%B %d, %Y")
-                    
-                    # Calculate available days (excluding exam day)
                     days_until_exam = (exam_date - datetime.now().date()).days
-                    available_days = min(7, max(1, days_until_exam))  # 1-7 days
+                    available_days = min(7, max(1, days_until_exam))
                     
                     raw_plan = generate_study_plan(
-                        syllabus_text, formatted_date, course_name, 
+                        syllabus_text, exam_date.strftime("%B %d, %Y"), course_name,
                         all_courses_info, available_days
                     )
                     structured_plan = parse_study_plan_to_calendar_items(
@@ -612,7 +545,6 @@ def main():
                     all_calendar_items.extend(structured_plan)
                     st.session_state.generated_plans[course_name] = raw_plan
             
-            # Resolve conflicts after all plans are generated
             if all_calendar_items:
                 with st.spinner("🔄 Resolving schedule conflicts..."):
                     resolved_items, conflicts = resolve_calendar_conflicts(all_calendar_items)
@@ -620,17 +552,18 @@ def main():
                     st.session_state.conflicts_resolved = conflicts
             
             progress_bar.empty()
-            st.success("✅ Study plans generated and conflicts resolved successfully!")
+            st.success("✅ Study plans generated successfully!")
     
-    # Display results
+    # --- Display Results ---
     if st.session_state.generated_plans:
         st.markdown("## 📘 Study Plans")
         
-        # Tabs for different views
         tab1, tab2 = st.tabs(["📅 Calendar View", "📝 Detailed Plans"])
         
         with tab1:
-            show_calendar_view(st.session_state.calendar_items, st.session_state.conflicts_resolved)
+            show_calendar_view(st.session_state.calendar_items,
+                               st.session_state.conflicts_resolved,
+                               st.session_state.dark_mode)
         
         with tab2:
             for course, plan in st.session_state.generated_plans.items():

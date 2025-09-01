@@ -1,0 +1,173 @@
+/* ---------------- Base Variables ---------------- */
+:root {
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    /* Light Theme */
+    --bg-color-light: #F0F2F6;
+    --secondary-bg-light: #FFFFFF;
+    --text-color-light: #1E1E1E;
+    --accent-color-light-1: #6366F1;
+    --accent-color-light-2: #8B5CF6;
+    --border-color-light: #E5E7EB;
+    --shadow-color-light: rgba(0, 0, 0, 0.1);
+
+    /* Dark Theme */
+    --bg-color-dark: #121212;
+    --secondary-bg-dark: #1E1E1E;
+    --text-color-dark: #EAEAEA;
+    --accent-color-dark-1: #7C3AED;
+    --accent-color-dark-2: #A78BFA;
+    --border-color-dark: #374151;
+    --shadow-color-dark: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------------- Theme Application ---------------- */
+body {
+    font-family: var(--font-family);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Light Mode */
+body:not(.dark-mode) {
+    background-color: var(--bg-color-light);
+    color: var(--text-color-light);
+}
+.main:not(.dark-mode) .stApp {
+    background-color: var(--bg-color-light);
+    color: var(--text-color-light);
+}
+
+/* Dark Mode */
+body.dark-mode {
+    background-color: var(--bg-color-dark);
+    color: var(--text-color-dark);
+}
+.main.dark-mode .stApp {
+    background-color: var(--bg-color-dark);
+    color: var(--text-color-dark);
+}
+
+/* ---------------- Component Styles ---------------- */
+.main-header {
+    background: linear-gradient(90deg, var(--accent-color-light-1), var(--accent-color-light-2));
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: white;
+}
+.dark-mode .main-header {
+    background: linear-gradient(90deg, var(--accent-color-dark-1), var(--accent-color-dark-2));
+}
+
+.course-card {
+    background: var(--secondary-bg-light);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin: 1rem 0;
+    border-left: 5px solid var(--accent-color-light-1);
+    box-shadow: 0 4px 6px var(--shadow-color-light);
+}
+.dark-mode .course-card {
+    background: var(--secondary-bg-dark);
+    border-left-color: var(--accent-color-dark-1);
+    box-shadow: 0 4px 6px var(--shadow-color-dark);
+}
+
+.study-task {
+    background: var(--bg-color-light);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    border-left: 3px solid #4CAF50;
+    box-shadow: 0 2px 4px var(--shadow-color-light);
+    color: var(--text-color-light);
+}
+.dark-mode .study-task {
+    background: var(--bg-color-dark);
+    border-left-color: #66BB6A;
+    box-shadow: 0 2px 4px var(--shadow-color-dark);
+    color: var(--text-color-dark);
+}
+
+.detailed-schedule {
+    background: var(--secondary-bg-light);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px var(--shadow-color-light);
+}
+.dark-mode .detailed-schedule {
+    background: var(--secondary-bg-dark);
+    box-shadow: 0 2px 8px var(--shadow-color-dark);
+}
+
+.exam-date {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: bold;
+    display: inline-block;
+    margin: 0.5rem 0;
+}
+
+.metric-card {
+    background: var(--secondary-bg-light);
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 10px var(--shadow-color-light);
+}
+.dark-mode .metric-card {
+    background: var(--secondary-bg-dark);
+    box-shadow: 0 2px 10px var(--shadow-color-dark);
+}
+
+.stButton > button {
+    background: linear-gradient(45deg, var(--accent-color-light-1), var(--accent-color-light-2));
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+.dark-mode .stButton > button {
+    background: linear-gradient(45deg, var(--accent-color-dark-1), var(--accent-color-dark-2));
+}
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-color-light);
+}
+.dark-mode .stButton > button:hover {
+    box-shadow: 0 4px 12px var(--shadow-color-dark);
+}
+
+.conflict-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    color: #856404;
+}
+.dark-mode .conflict-warning {
+    background: #4d3c00;
+    border-color: #997400;
+    color: #ffdead;
+}
+
+.success-message {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    color: #155724;
+}
+.dark-mode .success-message {
+    background: #0c3c18;
+    border-color: #1e7e34;
+    color: #a3d9b1;
+}
